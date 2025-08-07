@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Design Quest – Spot & Win (Plus Edition)</title>
+<style>
+  :root{
+    --bg:#f7f4ef;
+    --ink:#1c1c1c;
+    --muted:#8e8e8e;
+    --accent:#009e9e;
+    --card:#ffffff;
+    --ok:#15b36d;
+    --err:#d13f3f;
+    --shadow:0 10px 30px rgba(0,0,0,.08);
+    --radius:18px;
+  }
+  [data-theme="night"]{
+    --bg:#0f1114;
+    --ink:#e9f2f2;
+    --muted:#9fb1b1;
+    --accent:#24d1d1;
+    --card:#151a1d;
+    --shadow:0 12px 28px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;
+    color:var(--ink);
+    background:
+      linear-gradient(135deg, rgba(0,158,158,.08) 0%, rgba(0,0,0,0) 40%) no-repeat top left,
+      radial-gradient(1200px 600px at 80% -10%, rgba(0,0,0,.04), transparent 70%) no-repeat;
+    background-color: var(--bg);
+    transition: background-color .25s ease,color .25s ease;
+  }
+  .container{max-width:1200px;margin:32px auto 48px;padding:0 16px}
+  header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+  .brand{display:flex;gap:12px;align-items:center;font-weight:800;letter-spacing:.3px}
+  .dot{width:12px;height:12px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 6px rgba(0,158,158,.12)}
+  .hud{display:flex;gap:10px;flex-wrap:wrap}
+  .pill{background:#f3f8f8;border:1px solid rgba(0,158,158,.25);color:#0d4b4b;padding:8px 12px;border-radius:999px;font-weight:700;font-size:13px}
+  [data-theme="night"] .pill{background:#152022;color:#9de0e0;border-color:#1d3e3e}
+  .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+  .hero{padding:28px 24px;border-bottom:1px solid #eee;display:flex;gap:18px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+  [data-theme="night"] .hero{border-color:#243137}
+  .title{font-size:28px;margin:0 0 6px 0}
+  .subtitle{margin:0;color:var(--muted)}
+  button,.btn{appearance:none;border:none;background:var(--accent);color:white;padding:12px 16px;border-radius:12px;cursor:pointer;font-weight:700;transition:transform .05s ease, opacity .2s ease;text-decoration:none;display:inline-flex;align-items:center;gap:8px}
+  button:active{transform:translateY(1px)}
+  .btn-secondary{background:#e9f7f7;color:#0a5252}
+  .btn-ghost{background:transparent;color:var(--accent);border:1px solid rgba(0,158,158,.35)}
+  .btn-danger{background:#ffdfdf;color:#8a1f1f}
+  .stage{position:relative;min-height:560px;display:flex;align-items:stretch;justify-content:stretch;padding:18px}
+  .panel{background:var(--card);border-radius:16px;box-shadow:var(--shadow);padding:14px;display:flex;flex-direction:column;gap:10px;flex:1;min-height:520px}
+  .boards{display:grid;grid-template-columns:1fr 1fr;gap:12px;flex:1}
+  .board{background:#f8f8f8;border-radius:12px;position:relative;overflow:hidden;border:1px solid #ececec}
+  [data-theme="night"] .board{background:#101417;border-color:#1c2328}
+  svg{width:100%;height:100%}
+  .divider{height:1px;background:#eee;margin:8px 0}
+  [data-theme="night"] .divider{background:#243137}
+  .status{display:flex;align-items:center;gap:8px}
+  .status.ok{color:var(--ok)} .status.err{color:var(--err)}
+  footer{margin-top:14px;padding:14px 18px;color:#666;font-size:12px}
+  [data-theme="night"] footer{color:#8aa1a1}
+  .toast{position:fixed;right:18px;bottom:18px;background:#111;color:#fff;padding:12px 14px;border-radius:12px;box-shadow:var(--shadow);opacity:0;transform:translateY(10px);transition:all .25s ease;z-index:9999;font-weight:700;letter-spacing:.2px}
+  .toast.show{opacity:1;transform:translateY(0)}
+  .badge{background:#e6fbf9;color:#035e5e;border:1px solid #bfeeed;padding:6px 8px;border-radius:10px;font-size:12px;font-weight:800}
+  .legend{display:flex;gap:10px;flex-wrap:wrap}
+  .legend .key{width:14px;height:14px;border-radius:3px;background:#d2d2d2;border:1px solid #bcbcbc}
+  .legend .key.mod{background:#b9eef0;border-color:#6fd0d6}
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap}
+  .hint{background:#fff6d9;color:#5a4b13;border:1px solid #f0d78a}
+  .shake{animation:shake .25s ease}
+  @keyframes shake{0%{transform:translateX(0)}25%{transform:translateX(-4px)}50%{transform:translateX(4px)}75%{transform:translateX(-2px)}100%{transform:translateX(0)}}
+  /* confetti canvas sits above */
+  #fx{position:fixed;inset:0;pointer-events:none}
+</style>
+</head>
+<body>
+<canvas id="fx"></canvas>
+<div class="container">
+  <header>
+    <div class="brand"><span class="dot"></span>Design Quest – Spot & Win <span class="badge" id="modeBadge">Classic</span></div>
+    <div class="hud">
+      <div class="pill" id="levelPill">Level: 1</div>
+      <div class="pill" id="foundPill">Found: 0 / 5</div>
+      <div class="pill" id="timerPill">Time: 00:00</div>
+      <div class="pill" id="bestPill">Best: —</div>
+      <div class="pill" id="comboPill">Combo: ×0</div>
+    </div>
+  </header>
+
+  <div class="card">
+    <div class="hero">
+      <div>
+        <h1 class="title">More levels. More fun. Endless mode.</h1>
+        <p class="subtitle">Find all differences on the right board. Keep a streak for combo bonuses. Misclicks add time. Use hints wisely.</p>
+        <div class="legend">
+          <span><span class="key"></span><small>Original</small></span>
+          <span><span class="key mod"></span><small>Modified</small></span>
+          <span class="badge" id="achBadge">No Achievements Yet</span>
+        </div>
+      </div>
+      <div class="toolbar">
+        <button id="startBtn">Start / Restart</button>
+        <button class="btn btn-secondary" id="nextBtn">Next Level →</button>
+        <button class="btn btn-ghost" id="endlessBtn">∞ Endless</button>
+        <button class="btn btn-ghost" id="themeBtn">🌙 Night</button>
+        <button class="btn hint" id="hintBtn" title="Reveal a hint silhouette">💡 Hint (3)</button>
+        <button class="btn btn-ghost" id="muteBtn" aria-pressed="false">🔊 Sound On</button>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div class="panel" id="panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <h3 style="margin:0;color:var(--muted)">Game Boards</h3>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span class="badge" id="diffCountBadge">5 differences</span>
+            <span class="badge" id="penaltyBadge">+2s misclick</span>
+          </div>
+        </div>
+        <div class="boards">
+          <div class="board"><svg id="svgLeft" viewBox="0 0 600 420" preserveAspectRatio="xMidYMid slice"></svg></div>
+          <div class="board"><svg id="svgRight" viewBox="0 0 600 420" preserveAspectRatio="xMidYMid slice"></svg></div>
+        </div>
+        <div class="divider"></div>
+        <div class="status" id="statusLine">Click the differences on the right board.</div>
+      </div>
+    </div>
+    <footer>
+      Tip: To use in Canva, host this file and embed the URL via <strong>Apps → Embed</strong>. Endless mode is great for livestreams and booths.
+    </footer>
+  </div>
+</div>
+
+<div class="toast" id="toast">Correct!</div>
+
+<script>
+/* ====== Basics ====== */
+const $ = sel => document.querySelector(sel);
+const fmt = s => String(s).padStart(2,'0');
+const store = (k,v)=>localStorage.setItem(k,JSON.stringify(v));
+const load = (k,d)=>{try{const v=JSON.parse(localStorage.getItem(k));return v??d}catch(e){return d}};
+let muted=false;
+const ac=new (window.AudioContext||window.webkitAudioContext)();
+
+function play(type="ok"){
+  if(muted) return;
+  const o=ac.createOscillator(), g=ac.createGain();
+  o.connect(g); g.connect(ac.destination);
+  const t=ac.currentTime;
+  if(type==="ok"){ o.type="sine"; o.frequency.setValueAtTime(900,t);
+    g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(.22,t+.01); g.gain.exponentialRampToValueAtTime(.0001,t+.25);
+  } else if(type==="win"){ o.type="triangle"; o.frequency.setValueAtTime(420,t);
+    o.frequency.linearRampToValueAtTime(760,t+.25); o.frequency.linearRampToValueAtTime(1110,t+.55);
+    g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(.28,t+.01); g.gain.exponentialRampToValueAtTime(.0001,t+.6);
+  } else if(type==="miss"){ o.type="sawtooth"; o.frequency.setValueAtTime(160,t);
+    g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(.18,t+.01); g.gain.exponentialRampToValueAtTime(.0001,t+.18);
+  } else if(type==="combo"){ o.type="square"; o.frequency.setValueAtTime(660,t);
+    g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(.2,t+.01); g.gain.exponentialRampToValueAtTime(.0001,t+.22);
+  }
+  o.start(); o.stop(t+.7);
+}
+function toast(text){const el=$("#toast"); el.textContent=text; el.classList.add("show"); clearTimeout(toast._t); toast._t=setTimeout(()=>el.classList.remove("show"), 1000);}
+
+/* ====== Confetti ====== */
+const fx = document.getElementById('fx');
+const ctx = fx.getContext('2d');
+const parts=[];
+function resizeFx(){fx.width=innerWidth; fx.height=innerHeight}
+window.addEventListener('resize', resizeFx); resizeFx();
+function confetti(burst=80){
+  for(let i=0;i<burst;i++){
+    parts.push({x:Math.random()*fx.width,y:-10,vy:2+Math.random()*3,vx:-2+Math.random()*4,rot:Math.random()*6,vr:-.1+.2*Math.random(),s:4+Math.random()*6,life:120+Math.random()*60});
+  }
+}
+function tickFx(){
+  ctx.clearRect(0,0,fx.width,fx.height);
+  parts.forEach(p=>{
+    p.x+=p.vx; p.y+=p.vy; p.rot+=p.vr; p.life--;
+    ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot);
+    ctx.fillStyle = `hsl(${(p.x+p.y)%360},70%,${50+(p.vr*50)}%)`;
+    ctx.fillRect(-p.s/2,-p.s/2,p.s,p.s);
+    ctx.restore();
+  });
+  for(let i=parts.length-1;i>=0;i--) if(parts[i].life<=0 || parts[i].y>fx.height+20) parts.splice(i,1);
+  requestAnimationFrame(tickFx);
+} tickFx();
+
+/* ====== Scene Generator ====== */
+function drawScene(svg, seed, mods=[]){
+  svg.innerHTML="";
+  const NS="http://www.w3.org/2000/svg";
+  const bg=document.createElementNS(NS,"rect");
+  bg.setAttribute("x",0); bg.setAttribute("y",0); bg.setAttribute("width",600); bg.setAttribute("height",420);
+  bg.setAttribute("fill", getComputedStyle(document.body).getPropertyValue('--bg').trim());
+  svg.appendChild(bg);
+
+  let s=seed; function rnd(){ s=(s*9301+49297)%233280; return s/233280; } function pick(a){return a[Math.floor(rnd()*a.length)]}
+
+  // subtle grid
+  const grid=document.createElementNS(NS,"g");
+  grid.setAttribute("stroke","rgba(120,140,140,.15)"); grid.setAttribute("stroke-width","1");
+  for(let x=0;x<=600;x+=20){const ln=document.createElementNS(NS,"line"); ln.setAttribute("x1",x); ln.setAttribute("y1",0); ln.setAttribute("x2",x); ln.setAttribute("y2",420); grid.appendChild(ln);}
+  for(let y=0;y<=420;y+=20){const ln=document.createElementNS(NS,"line"); ln.setAttribute("x1",0); ln.setAttribute("y1",y); ln.setAttribute("x2",600); ln.setAttribute("y2",y); grid.appendChild(ln);}
+  svg.appendChild(grid);
+
+  const baseColors = ["#eaeaea","#efefef","#f4f4f4","#f0f0f0","#ededed"];
+  const blocks=document.createElementNS(NS,"g"); svg.appendChild(blocks);
+  for(let i=0;i<10;i++){
+    const w=50+Math.floor(rnd()*150), h=28+Math.floor(rnd()*130);
+    const x=Math.floor(rnd()*(600-w)), y=Math.floor(rnd()*(420-h));
+    const r=document.createElementNS(NS,"rect");
+    r.setAttribute("x",x); r.setAttribute("y",y); r.setAttribute("width",w); r.setAttribute("height",h);
+    r.setAttribute("fill", pick(baseColors)); r.setAttribute("stroke","#d8d8d8"); r.setAttribute("stroke-width","1.2"); r.setAttribute("rx","4");
+    blocks.appendChild(r);
+  }
+  const panels=document.createElementNS(NS,"g"); svg.appendChild(panels);
+  for(let i=0;i<28;i++){
+    const w=12+Math.floor(rnd()*34), h=10+Math.floor(rnd()*28);
+    const x=Math.floor(rnd()*(600-w)), y=Math.floor(rnd()*(420-h));
+    const r=document.createElementNS(NS,"rect");
+    r.setAttribute("x",x); r.setAttribute("y",y); r.setAttribute("width",w); r.setAttribute("height",h);
+    r.setAttribute("fill","#ffffff"); r.setAttribute("stroke","#cfcfcf"); r.setAttribute("stroke-width","1"); r.setAttribute("rx","2");
+    panels.appendChild(r);
+  }
+  const accents=document.createElementNS(NS,"g"); svg.appendChild(accents);
+  for(let i=0;i<7;i++){
+    const x1=Math.floor(rnd()*600), y1=Math.floor(rnd()*420);
+    const x2=x1+(-70+Math.floor(rnd()*140)), y2=y1+(-70+Math.floor(rnd()*140));
+    const ln=document.createElementNS(NS,"line");
+    ln.setAttribute("x1",x1); ln.setAttribute("y1",y1); ln.setAttribute("x2",x2); ln.setAttribute("y2",y2);
+    ln.setAttribute("stroke","#cbdede"); ln.setAttribute("stroke-width",4); ln.setAttribute("stroke-linecap","round");
+    accents.appendChild(ln);
+  }
+  // apply mods – visible accents to create differences
+  mods.forEach(m=>{
+    if(m.type==="dot"){
+      const c=document.createElementNS(NS,"circle");
+      c.setAttribute("cx",m.x); c.setAttribute("cy",m.y); c.setAttribute("r",m.r||10);
+      c.setAttribute("fill", m.color || "#b9eef0"); c.setAttribute("stroke","#6fd0d6"); c.setAttribute("stroke-width","2");
+      svg.appendChild(c);
+    } else if(m.type==="bar"){
+      const r=document.createElementNS(NS,"rect");
+      r.setAttribute("x", m.x-(m.w/2)); r.setAttribute("y", m.y-(m.h/2)); r.setAttribute("width", m.w); r.setAttribute("height", m.h);
+      r.setAttribute("fill", m.color || "#b9eef0"); r.setAttribute("stroke","#6fd0d6"); r.setAttribute("stroke-width","2"); r.setAttribute("rx","2");
+      svg.appendChild(r);
+    } else if(m.type==="beam"){
+      const ln=document.createElementNS(NS,"line");
+      ln.setAttribute("x1",m.x1); ln.setAttribute("y1",m.y1); ln.setAttribute("x2",m.x2); ln.setAttribute("y2",m.y2);
+      ln.setAttribute("stroke", m.color || "#8fdde0"); ln.setAttribute("stroke-width", m.w || 6); ln.setAttribute("stroke-linecap","round");
+      svg.appendChild(ln);
+    }
+  });
+}
+
+/* ====== Procedural Levels ====== */
+function generateDiffs(seed, count, scale=1){
+  let s=seed; function rnd(){ s=(s*9301+49297)%233280; return s/233280; }
+  const diffs=[];
+  for(let i=0;i<count;i++){
+    const t = rnd();
+    if(t<0.33){
+      diffs.push({type:"dot", x: 30+rnd()*540, y: 30+rnd()*360, r: 8+Math.floor(8*scale), hitR: 12+Math.floor(8*scale)});
+    } else if(t<0.66){
+      diffs.push({type:"bar", x: 40+rnd()*520, y: 40+rnd()*340, w: 36+Math.floor(64*scale), h: 10+Math.floor(12*scale), hitR: 12+Math.floor(6*scale)});
+    } else {
+      const x1=40+rnd()*520, y1=40+rnd()*340, x2=x1+(-50+rnd()*100), y2=y1+(-50+rnd()*100);
+      diffs.push({type:"beam", x1, y1, x2, y2, w: 5+Math.floor(6*scale), hitR: 11+Math.floor(5*scale)});
+    }
+  }
+  return diffs;
+}
+
+/* Preset 6 classic levels; Endless will auto-generate further */
+const classicLevels = Array.from({length:6}, (_,i)=> ({
+  seed: 111 + i*137,
+  diffs: generateDiffs(555+i*73, 5+i%2, 1 - (i>2? 0.2:0)) // levels 1-6 vary between 5 and 6 differences
+}));
+
+let mode = "classic"; // or "endless"
+let levelIndex = 0;
+let diffs = [];
+let found = 0;
+let solvedSet = new Set();
+let timer = 0, timerId = null;
+let combo = 0;
+let lastCorrectTime = 0;
+let hints = 3;
+let penalty = 2; // seconds added on misclick
+const best = load("dq_best", {});
+const achievements = load("dq_ach", {speedrun:false, flawless:false, hunter:false});
+
+function setHUD(){
+  $("#modeBadge").textContent = mode==="classic" ? "Classic" : "Endless";
+  $("#levelPill").textContent = mode==="classic" ? `Level: ${levelIndex+1}/${classicLevels.length}` : `Level: ${levelIndex+1}`;
+  $("#foundPill").textContent = `Found: ${found} / ${diffs.length}`;
+  $("#diffCountBadge").textContent = `${diffs.length} differences`;
+  $("#penaltyBadge").textContent = `+${penalty}s misclick`;
+  const m=Math.floor(timer/60), s=timer%60; $("#timerPill").textContent=`Time: ${fmt(m)}:${fmt(s)}`;
+  $("#comboPill").textContent = `Combo: ×${combo}`;
+  const key = `${mode}-${levelIndex}`;
+  const b = best[key]; $("#bestPill").textContent = b? `Best: ${fmt(Math.floor(b/60))}:${fmt(b%60)}` : "Best: —";
+  $("#hintBtn").textContent = `💡 Hint (${hints})`;
+  const achTxt = Object.keys(achievements).filter(k=>achievements[k]).length ?
+    `🏅 ${Object.keys(achievements).filter(k=>achievements[k]).length} Achievements` : "No Achievements Yet";
+  $("#achBadge").textContent = achTxt;
+}
+
+function startTimer(){ if(timerId) clearInterval(timerId); timer=0; setHUD(); timerId=setInterval(()=>{ timer++; setHUD(); }, 1000); }
+function stopTimer(){ clearInterval(timerId); timerId = null; }
+
+function buildLevel(){
+  solvedSet = new Set(); found = 0; combo = 0; hints = Math.min(3, 3 + Math.floor(levelIndex/5));
+  const seedBase = 900 + levelIndex*97 + (mode==="endless" ? Math.floor(Math.random()*1000): 0);
+  const diffCount = mode==="classic" ? classicLevels[levelIndex].diffs.length : 5 + Math.floor(levelIndex/3);
+  const scale = Math.max(0.6, 1 - levelIndex*0.03);
+  const seed = mode==="classic" ? classicLevels[levelIndex].seed : seedBase;
+  diffs = mode==="classic" ? classicLevels[levelIndex].diffs : generateDiffs(seedBase, diffCount, scale);
+
+  drawScene($("#svgLeft"), seed, []);
+  drawScene($("#svgRight"), seed, diffs);
+
+  renderHotspots();
+  startTimer();
+  setHUD();
+  $("#statusLine").textContent = "Find all differences. Keep a combo for bonus confetti!";
+}
+
+function nextLevel(){
+  if(mode==="classic"){
+    levelIndex = (levelIndex + 1) % classicLevels.length;
+  } else {
+    levelIndex += 1; // endless grows forever
+  }
+  buildLevel();
+}
+
+function renderHotspots(){
+  const svg=$("#svgRight");
+  Array.from(svg.querySelectorAll(".hot")).forEach(n=>n.remove());
+  diffs.forEach((d,i)=>{
+    const g=document.createElementNS("http://www.w3.org/2000/svg","g"); g.classList.add("hot"); g.style.cursor="pointer";
+    let hit, cx, cy, hitR=d.hitR||12;
+    if(d.type==="dot"){
+      hit=document.createElementNS("http://www.w3.org/2000/svg","circle");
+      hit.setAttribute("cx", d.x); hit.setAttribute("cy", d.y); hit.setAttribute("r", hitR);
+      cx=d.x; cy=d.y;
+    } else if(d.type==="bar"){
+      hit=document.createElementNS("http://www.w3.org/2000/svg","rect");
+      hit.setAttribute("x", d.x-(d.w/2+8)); hit.setAttribute("y", d.y-(d.h/2+8)); hit.setAttribute("width", d.w+16); hit.setAttribute("height", d.h+16); hit.setAttribute("rx",6);
+      cx=d.x; cy=d.y;
+    } else {
+      const mx=(d.x1+d.x2)/2, my=(d.y1+d.y2)/2;
+      hit=document.createElementNS("http://www.w3.org/2000/svg","circle");
+      hit.setAttribute("cx", mx); hit.setAttribute("cy", my); hit.setAttribute("r", hitR);
+      cx=mx; cy=my;
+    }
+    hit.setAttribute("fill","rgba(0,0,0,0)"); hit.setAttribute("stroke","rgba(0,0,0,0)");
+    g.appendChild(hit);
+
+    const marker=document.createElementNS("http://www.w3.org/2000/svg","circle");
+    marker.setAttribute("cx", cx); marker.setAttribute("cy", cy); marker.setAttribute("r", 14);
+    marker.setAttribute("fill","rgba(21,179,109,.18)"); marker.setAttribute("stroke","#15b36d"); marker.setAttribute("stroke-width","2");
+    marker.style.opacity=0; g.appendChild(marker);
+
+    g.addEventListener("click", e=>{
+      if(solvedSet.has(i)) return;
+      solvedSet.add(i); found++; marker.style.opacity=1; marker.style.transition="opacity .15s ease, transform .2s ease"; marker.style.transform="scale(1.1)";
+      const now=performance.now()/1000;
+      combo = (now - lastCorrectTime <= 4) ? combo+1 : 1;
+      lastCorrectTime = now;
+      play("ok"); toast(combo>1?`Combo ×${combo}!`: "Correct!");
+      if(combo>1 && combo%3===0){ confetti(60 + 10*combo); play("combo"); }
+      $("#statusLine").innerHTML = `✅ Correct. <span style="color:var(--muted)">Found ${found}/${diffs.length}</span>`;
+      setHUD();
+      if(found===diffs.length){
+        stopTimer();
+        confetti(150); play("win");
+        const key = `${mode}-${levelIndex}`;
+        if(!best[key] || timer < best[key]){ best[key] = timer; store("dq_best", best); }
+        // Achievements
+        if(timer <= 30 && diffs.length>=5) achievements.speedrun = true;
+        if(combo >= diffs.length) achievements.flawless = true;
+        if(levelIndex >= 10) achievements.hunter = true;
+        store("dq_ach", achievements);
+        $("#statusLine").innerHTML = `🎉 Level complete in <strong>${fmt(Math.floor(timer/60))}:${fmt(timer%60)}</strong>. Next level →`;
+        setHUD();
+      }
+    });
+
+    svg.appendChild(g);
+  });
+
+  // Misclick handling (penalty)
+  svg.addEventListener("click", e=>{
+    // If click didn't hit a hotspot child, apply penalty
+    if(!e.target.closest(".hot")){
+      timer += penalty; setHUD();
+      $("#panel").classList.remove("shake"); void $("#panel").offsetWidth; $("#panel").classList.add("shake");
+      play("miss"); toast(`Miss! +${penalty}s`);
+    }
+  });
+}
+
+/* ====== Hints ====== */
+function useHint(){
+  if(hints<=0) { toast("No hints left"); return; }
+  // Find an unsolved diff and flash a silhouette
+  const idx = diffs.findIndex((d,i)=>!solvedSet.has(i));
+  if(idx<0){ toast("All found!"); return; }
+  hints--; setHUD();
+  const d = diffs[idx];
+  const svg = $("#svgRight");
+  let el;
+  if(d.type==="dot"){
+    el=document.createElementNS("http://www.w3.org/2000/svg","circle");
+    el.setAttribute("cx", d.x); el.setAttribute("cy", d.y); el.setAttribute("r", (d.r||10)+12);
+  } else if(d.type==="bar"){
+    el=document.createElementNS("http://www.w3.org/2000/svg","rect");
+    el.setAttribute("x", d.x-(d.w/2+14)); el.setAttribute("y", d.y-(d.h/2+14)); el.setAttribute("width", d.w+28); el.setAttribute("height", d.h+28); el.setAttribute("rx",8);
+  } else {
+    const mx=(d.x1+d.x2)/2, my=(d.y1+d.y2)/2;
+    el=document.createElementNS("http://www.w3.org/2000/svg","circle");
+    el.setAttribute("cx", mx); el.setAttribute("cy", my); el.setAttribute("r", (d.hitR||12)+14);
+  }
+  el.setAttribute("fill","rgba(255,230,120,.16)");
+  el.setAttribute("stroke","#f0d78a"); el.setAttribute("stroke-dasharray","6 6"); el.setAttribute("stroke-width","2");
+  el.style.opacity=0; svg.appendChild(el);
+  requestAnimationFrame(()=>{ el.style.transition="opacity .25s ease"; el.style.opacity=1; });
+  setTimeout(()=>{ el.style.opacity=0; setTimeout(()=>el.remove(),280); }, 1200);
+  toast("Hint used");
+}
+
+/* ====== Controls ====== */
+$("#startBtn").addEventListener("click", ()=>{ buildLevel(); });
+$("#nextBtn").addEventListener("click", ()=>{ nextLevel(); });
+$("#endlessBtn").addEventListener("click", ()=>{ mode = (mode==="classic"?"endless":"classic"); levelIndex = 0; buildLevel(); });
+$("#themeBtn").addEventListener("click", ()=>{
+  const night = document.body.getAttribute("data-theme") === "night";
+  document.body.setAttribute("data-theme", night? "" : "night");
+  $("#themeBtn").textContent = night ? "🌙 Night" : "☀️ Day";
+  // redraw current scene to adapt bg color
+  buildLevel();
+});
+$("#hintBtn").addEventListener("click", useHint);
+$("#muteBtn").addEventListener("click", ()=>{
+  muted = !muted; $("#muteBtn").textContent = muted? "🔇 Sound Off" : "🔊 Sound On"; if(ac.state==="suspended") ac.resume();
+});
+
+// init
+buildLevel();
+</script>
+</body>
+</html>
