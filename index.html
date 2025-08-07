@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Design Quest – Spot & Win (Pro v3)</title>
+<title>Design Quest – Spot & Win (Pro v3.1 Clean)</title>
 <style>
   :root{
     --bg:#f7f4ef; --ink:#1c1c1c; --muted:#8e8e8e; --accent:#009e9e; --card:#ffffff;
@@ -12,8 +12,7 @@
   [data-theme="night"]{ --bg:#0e1114; --ink:#e7f0f0; --muted:#8ea5a5; --accent:#2ad1d1; --card:#141a1d; --shadow:0 12px 28px rgba(0,0,0,.35) }
   *{box-sizing:border-box}
   html,body{height:100%}
-  body{
-    margin:0; font-family: Inter, ui-sans-serif, system-ui;
+  body{ margin:0; font-family: Inter, ui-sans-serif, system-ui;
     color:var(--ink);
     background: radial-gradient(900px 600px at 80% -10%, rgba(0,158,158,.12), transparent 70%) no-repeat, var(--bg);
     transition: background-color .25s ease, color .25s ease;
@@ -53,11 +52,42 @@
   .toolbar{display:flex;gap:10px;flex-wrap:wrap}
   #fx,#zoomFx{position:fixed;inset:0;pointer-events:none}
   #zoomFx{mix-blend-mode:multiply;opacity:0;transition:opacity .2s ease}
+  /* Modal paywall */
+  .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.4);z-index:99999}
+  .modal .box{background:var(--card);padding:20px;border-radius:16px;box-shadow:var(--shadow);max-width:560px;width:92%}
+  .modal h2{margin:0 0 6px 0}
+  .modal p{margin:6px 0;color:var(--muted)}
+  .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+  input[type="text"]{padding:10px 12px;border-radius:10px;border:1px solid #d8eaea;outline:none;background:#fff;min-width:180px}
 </style>
 </head>
 <body>
 <canvas id="fx"></canvas>
 <canvas id="zoomFx"></canvas>
+
+<!-- Paywall Modal -->
+<div class="modal" id="paywall">
+  <div class="box">
+    <h2>Unlock <span style="color:var(--accent)">Pro Levels</span></h2>
+    <p>You're on fire! Get endless levels, daily challenges, and pro power‑ups without limits.</p>
+    <ul style="margin:6px 0 0 18px;color:var(--muted)">
+      <li>Unlimited Endless mode</li>
+      <li>Daily global challenge</li>
+      <li>Freeze & Zoom power‑ups x10</li>
+      <li>Exclusive “Architect Story” episodes</li>
+    </ul>
+    <div class="row">
+      <button id="buyBtn">🚀 Continue – Pro Pass</button>
+      <button class="btn btn-secondary" id="shareBtn">🔗 Share to unlock</button>
+    </div>
+    <div class="row">
+      <input id="redeemCode" type="text" placeholder="Have a code? (e.g., DESIGN‑VIP)">
+      <button class="btn btn-ghost" id="redeemBtn">Redeem</button>
+    </div>
+    <p style="font-size:12px">Tip: Sharing this game with 3 friends unlocks Pro for free on this device.</p>
+  </div>
+</div>
+
 <div class="container">
   <header>
     <div class="brand"><span class="dot"></span>Design Quest – Spot & Win <span class="badge" id="modeBadge">Classic</span></div>
@@ -73,11 +103,9 @@
   <div class="card">
     <div class="hero">
       <div>
-        <h1 class="title">Pro v3 — Daily Challenge, Adaptive difficulty, Zoom, Freeze, Confetti.</h1>
-        <p class="subtitle">Find all differences on the right board. Answers now fade away — nothing stays exposed.</p>
-        <div class="legend">
-          <span class="badge" id="achBadge">No Achievements Yet</span>
-        </div>
+        <h1 class="title">Pro v3.1 — Clean & Commercial.</h1>
+        <p class="subtitle">Differences blend into the design; found spots pulse then vanish. Daily & Endless challenges + viral share.</p>
+        <div class="legend"><span class="badge" id="achBadge">No Achievements Yet</span></div>
       </div>
       <div class="toolbar">
         <button id="startBtn">Start / Restart</button>
@@ -85,7 +113,8 @@
         <button class="btn btn-ghost" id="endlessBtn">∞ Endless</button>
         <button class="btn btn-ghost" id="dailyBtn">📅 Daily</button>
         <button class="btn btn-warning" id="freezeBtn" title="Freeze timer 5s">🧊 Freeze</button>
-        <button class="btn btn-ghost" id="zoomBtn" title="Zoom lens for 4s">🔍 Zoom</button>
+        <button class="btn btn-ghost" id="zoomBtn" title="Zoom lens 4s">🔍 Zoom</button>
+        <button class="btn btn-ghost" id="shareChallengeBtn" title="Copy a challenge link">🏆 Share challenge</button>
         <button class="btn btn-ghost" id="themeBtn">🌙 Night</button>
         <button class="btn btn-ghost" id="muteBtn" aria-pressed="false">🔊 Sound On</button>
       </div>
@@ -108,9 +137,7 @@
         <div class="status" id="statusLine">Click the differences on the right board.</div>
       </div>
     </div>
-    <footer>
-      Host this as <strong>index.html</strong> on GitHub Pages and embed the URL in Canva via <strong>Apps → Embed</strong>.
-    </footer>
+    <footer>Host as <strong>index.html</strong> on GitHub Pages. Embed URL in Canva via <strong>Apps → Embed</strong>.</footer>
   </div>
 </div>
 
@@ -128,7 +155,6 @@ function sfx(type="ok"){ if(muted) return;
   if(type==="ok"){o.type="sine";o.frequency.setValueAtTime(920,t);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.22,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+.25)}
   if(type==="win"){o.type="triangle";o.frequency.setValueAtTime(420,t);o.frequency.linearRampToValueAtTime(760,t+.25);o.frequency.linearRampToValueAtTime(1110,t+.55);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.28,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+.6)}
   if(type==="miss"){o.type="sawtooth";o.frequency.setValueAtTime(160,t);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.18,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+.18)}
-  if(type==="combo"){o.type="square";o.frequency.setValueAtTime(660,t);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.2,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+.22)}
   o.start(); o.stop(t+.7);
 }
 function toast(text){const el=$("#toast"); el.textContent=text; el.classList.add("show"); clearTimeout(toast._t); toast._t=setTimeout(()=>el.classList.remove("show"), 950);}
@@ -137,95 +163,78 @@ function toast(text){const el=$("#toast"); el.textContent=text; el.classList.add
 const fx = $("#fx").getContext("2d");
 const fxCanvas = $("#fx"); function fxResize(){fxCanvas.width=innerWidth; fxCanvas.height=innerHeight} window.addEventListener('resize',fxResize); fxResize();
 const parts=[]; function confetti(n=120){ for(let i=0;i<n;i++){ parts.push({x:Math.random()*fxCanvas.width,y:-10,vx:-2+Math.random()*4,vy:2+Math.random()*3,rot:Math.random()*6,vr:-.1+.2*Math.random(),s:4+Math.random()*6,life:120+Math.random()*60}) } }
-(function loop(){ fx.clearRect(0,0,fxCanvas.width,fxCanvas.height); parts.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.rot+=p.vr;p.life--; fx.save();fx.translate(p.x,p.y);fx.rotate(p.rot);fx.fillStyle=`hsl(${(p.x+p.y)%360},70%,${50+(p.vr*50)}%)`;fx.fillRect(-p.s/2,-p.s/2,p.s,p.s);fx.restore();}); for(let i=parts.length-1;i>=0;i--) if(parts[i].life<=0||parts[i].y>fxCanvas.height+20) parts.splice(i,1); requestAnimationFrame(loop) })();
+;(function loop(){ fx.clearRect(0,0,fxCanvas.width,fxCanvas.height); parts.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.rot+=p.vr;p.life--; fx.save(); fx.translate(p.x,p.y); fx.rotate(p.rot); fx.fillStyle=`hsl(${(p.x+p.y)%360},70%,${50+(p.vr*50)}%)`; fx.fillRect(-p.s/2,-p.s/2,p.s,p.s); fx.restore();}); for(let i=parts.length-1;i>=0;i--) if(parts[i].life<=0||parts[i].y>fxCanvas.height+20) parts.splice(i,1); requestAnimationFrame(loop) })();
 
-/* ====== Zoom Lens (temporary) ====== */
+/* ====== Zoom Lens (visual overlay hint) ====== */
 const zoomC = $("#zoomFx"); const zctx = zoomC.getContext("2d"); function zResize(){zoomC.width=innerWidth; zoomC.height=innerHeight} window.addEventListener('resize',zResize); zResize();
 let zoomActive=false, zoomTimeout=null;
 function startZoom(ms=4000){
-  zoomActive=true; $("#zoomFx").style.opacity=1; const rect = $("#svgRight").getBoundingClientRect();
-  function draw(e){
-    if(!zoomActive) return;
-    zctx.clearRect(0,0,zoomC.width,zoomC.height);
-    const x = Math.min(Math.max(e.clientX, rect.left), rect.right);
-    const y = Math.min(Math.max(e.clientY, rect.top), rect.bottom);
-    const r = 80;
-    zctx.save();
-    zctx.beginPath(); zctx.arc(x, y, r, 0, Math.PI*2); zctx.clip();
-    // snapshot of the element area (simple filled circle spotlight)
-    zctx.fillStyle = "rgba(0,0,0,0.25)"; zctx.fillRect(0,0,zoomC.width,zoomC.height);
-    zctx.restore();
+  zoomActive=true; $("#zoomFx").style.opacity=1; const rect=$("#svgRight").getBoundingClientRect();
+  function draw(e){ if(!zoomActive) return; zctx.clearRect(0,0,zoomC.width,zoomC.height);
+    const x=Math.min(Math.max(e.clientX,rect.left),rect.right); const y=Math.min(Math.max(e.clientY,rect.top),rect.bottom); const r=80;
+    zctx.save(); zctx.beginPath(); zctx.arc(x,y,r,0,Math.PI*2); zctx.clip(); zctx.fillStyle="rgba(0,0,0,0.25)"; zctx.fillRect(0,0,zoomC.width,zoomC.height); zctx.restore();
   }
-  window.addEventListener("mousemove", draw); draw({clientX:rect.left+rect.width/2, clientY:rect.top+rect.height/2});
-  clearTimeout(zoomTimeout); zoomTimeout=setTimeout(()=>{ zoomActive=false; $("#zoomFx").style.opacity=0; window.removeEventListener("mousemove", draw); }, ms);
+  window.addEventListener("mousemove",draw); draw({clientX:rect.left+rect.width/2, clientY:rect.top+rect.height/2});
+  clearTimeout(zoomTimeout); zoomTimeout=setTimeout(()=>{ zoomActive=false; $("#zoomFx").style.opacity=0; window.removeEventListener("mousemove",draw); },ms);
 }
 
-/* ====== Scene Generator ====== */
-function drawScene(svg, seed, mods=[], themeShift=0){
+/* ====== Scene Generator (neutral styling for differences) ====== */
+function drawScene(svg, seed, mods=[], options={}){
   svg.innerHTML="";
   const NS="http://www.w3.org/2000/svg";
-  const bg=document.createElementNS(NS,"rect"); bg.setAttribute("x",0); bg.setAttribute("y",0); bg.setAttribute("width",600); bg.setAttribute("height",420);
-  bg.setAttribute("fill","url(#grad)"); svg.appendChild(bg);
-
-  const defs=document.createElementNS(NS,"defs");
-  const grad=document.createElementNS(NS,"linearGradient"); grad.setAttribute("id","grad"); grad.setAttribute("x1","0"); grad.setAttribute("y1","0"); grad.setAttribute("x2","0"); grad.setAttribute("y2","1");
-  const stop1=document.createElementNS(NS,"stop"); stop1.setAttribute("offset","0%"); stop1.setAttribute("stop-color","rgba(0,0,0,0.02)");
-  const stop2=document.createElementNS(NS,"stop"); stop2.setAttribute("offset","100%"); stop2.setAttribute("stop-color","rgba(0,0,0,0.06)");
-  grad.appendChild(stop1); grad.appendChild(stop2); defs.appendChild(grad);
-  svg.appendChild(defs);
-
   let s=seed; function rnd(){ s=(s*9301+49297)%233280; return s/233280; } function pick(a){return a[Math.floor(rnd()*a.length)]}
 
-  // grid
+  // bg + grid
+  const gradId = "g"+Math.floor(Math.random()*1e6);
+  const defs=document.createElementNS(NS,"defs");
+  const grad=document.createElementNS(NS,"linearGradient"); grad.setAttribute("id",gradId); grad.setAttribute("x1","0"); grad.setAttribute("y1","0"); grad.setAttribute("x2","0"); grad.setAttribute("y2","1");
+  const stop1=document.createElementNS(NS,"stop"); stop1.setAttribute("offset","0%"); stop1.setAttribute("stop-color","rgba(0,0,0,0.02)");
+  const stop2=document.createElementNS(NS,"stop"); stop2.setAttribute("offset","100%"); stop2.setAttribute("stop-color","rgba(0,0,0,0.06)");
+  grad.appendChild(stop1); grad.appendChild(stop2); defs.appendChild(grad); svg.appendChild(defs);
+  const bg=document.createElementNS(NS,"rect"); bg.setAttribute("x",0); bg.setAttribute("y",0); bg.setAttribute("width",600); bg.setAttribute("height",420); bg.setAttribute("fill","url(#"+gradId+")"); svg.appendChild(bg);
+
   const grid=document.createElementNS(NS,"g"); grid.setAttribute("stroke","rgba(120,140,140,.15)"); grid.setAttribute("stroke-width","1");
   for(let x=0;x<=600;x+=20){const ln=document.createElementNS(NS,"line"); ln.setAttribute("x1",x); ln.setAttribute("y1",0); ln.setAttribute("x2",x); ln.setAttribute("y2",420); grid.appendChild(ln)}
   for(let y=0;y<=420;y+=20){const ln=document.createElementNS(NS,"line"); ln.setAttribute("x1",0); ln.setAttribute("y1",y); ln.setAttribute("x2",600); ln.setAttribute("y2",y); grid.appendChild(ln)}
   svg.appendChild(grid);
 
-  // buildings blocks
   const baseColors=["#ececec","#efefef","#f4f4f4","#f0f0f0","#ededed"];
   const blocks=document.createElementNS(NS,"g"); svg.appendChild(blocks);
-  for(let i=0;i<10;i++){
-    const w=50+Math.floor(rnd()*150), h=28+Math.floor(rnd()*130);
+  for(let i=0;i<10;i++){ const w=50+Math.floor(rnd()*150), h=28+Math.floor(rnd()*130);
     const x=Math.floor(rnd()*(600-w)), y=Math.floor(rnd()*(420-h));
     const r=document.createElementNS(NS,"rect"); r.setAttribute("x",x); r.setAttribute("y",y); r.setAttribute("width",w); r.setAttribute("height",h);
-    r.setAttribute("fill",pick(baseColors)); r.setAttribute("stroke","#d7d7d7"); r.setAttribute("stroke-width","1.2"); r.setAttribute("rx","4");
-    blocks.appendChild(r);
+    r.setAttribute("fill",pick(baseColors)); r.setAttribute("stroke","#d7d7d7"); r.setAttribute("stroke-width","1.2"); r.setAttribute("rx","4"); blocks.appendChild(r);
   }
-  // panels
   const panels=document.createElementNS(NS,"g"); svg.appendChild(panels);
-  for(let i=0;i<28;i++){
-    const w=12+Math.floor(rnd()*34), h=10+Math.floor(rnd()*28);
+  for(let i=0;i<28;i++){ const w=12+Math.floor(rnd()*34), h=10+Math.floor(rnd()*28);
     const x=Math.floor(rnd()*(600-w)), y=Math.floor(rnd()*(420-h));
     const r=document.createElementNS(NS,"rect"); r.setAttribute("x",x); r.setAttribute("y",y); r.setAttribute("width",w); r.setAttribute("height",h);
-    r.setAttribute("fill","#ffffff"); r.setAttribute("stroke","#cfcfcf"); r.setAttribute("stroke-width","1"); r.setAttribute("rx","2");
-    panels.appendChild(r);
+    r.setAttribute("fill","#ffffff"); r.setAttribute("stroke","#cfcfcf"); r.setAttribute("stroke-width","1"); r.setAttribute("rx","2"); panels.appendChild(r);
   }
-  // beams
   const accents=document.createElementNS(NS,"g"); svg.appendChild(accents);
-  for(let i=0;i<7;i++){
-    const x1=Math.floor(rnd()*600), y1=Math.floor(rnd()*420);
+  for(let i=0;i<7;i++){ const x1=Math.floor(rnd()*600), y1=Math.floor(rnd()*420);
     const x2=x1+(-70+Math.floor(rnd()*140)), y2=y1+(-70+Math.floor(rnd()*140));
     const ln=document.createElementNS(NS,"line"); ln.setAttribute("x1",x1); ln.setAttribute("y1",y1); ln.setAttribute("x2",x2); ln.setAttribute("y2",y2);
     ln.setAttribute("stroke","#cbdede"); ln.setAttribute("stroke-width",4); ln.setAttribute("stroke-linecap","round"); accents.appendChild(ln);
   }
 
-  // mods
+  // Apply mods subtly (no teal). These mimic native elements.
   mods.forEach(m=>{
-    if(m.type==="dot"){
-      const c=document.createElementNS(NS,"circle"); c.setAttribute("cx",m.x); c.setAttribute("cy",m.y); c.setAttribute("r",m.r||10);
-      c.setAttribute("fill", m.color || "#b9eef0"); c.setAttribute("stroke","#6fd0d6"); c.setAttribute("stroke-width","2"); svg.appendChild(c);
-    } else if(m.type==="bar"){
+    if(m.type==="dot"){ // add a "window" panel
+      const r=document.createElementNS(NS,"rect"); r.setAttribute("x",m.x-(m.r||10)); r.setAttribute("y",m.y-(m.r||10));
+      const size=(m.r||10)*2; r.setAttribute("width",size); r.setAttribute("height",size*0.8);
+      r.setAttribute("fill","#ffffff"); r.setAttribute("stroke","#cfcfcf"); r.setAttribute("stroke-width","1"); r.setAttribute("rx","2"); svg.appendChild(r);
+    } else if(m.type==="bar"){ // add a long panel
       const r=document.createElementNS(NS,"rect"); r.setAttribute("x", m.x-(m.w/2)); r.setAttribute("y", m.y-(m.h/2)); r.setAttribute("width", m.w); r.setAttribute("height", m.h);
-      r.setAttribute("fill", m.color || "#b9eef0"); r.setAttribute("stroke","#6fd0d6"); r.setAttribute("stroke-width","2"); r.setAttribute("rx","2"); svg.appendChild(r);
-    } else if(m.type==="beam"){
+      r.setAttribute("fill","#ffffff"); r.setAttribute("stroke","#cfcfcf"); r.setAttribute("stroke-width","1"); r.setAttribute("rx","2"); svg.appendChild(r);
+    } else if(m.type==="beam"){ // subtle accent beam
       const ln=document.createElementNS(NS,"line"); ln.setAttribute("x1",m.x1); ln.setAttribute("y1",m.y1); ln.setAttribute("x2",m.x2); ln.setAttribute("y2",m.y2);
-      ln.setAttribute("stroke", m.color || "#8fdde0"); ln.setAttribute("stroke-width", m.w || 6); ln.setAttribute("stroke-linecap","round"); svg.appendChild(ln);
+      ln.setAttribute("stroke","#cbdede"); ln.setAttribute("stroke-width", m.w || 4); ln.setAttribute("stroke-linecap","round"); svg.appendChild(ln);
     }
   });
 }
 
-/* ====== Procedural Levels & Modes ====== */
+/* ====== Diffs & Modes ====== */
 function generateDiffs(seed, count, scale=1){
   let s=seed; function rnd(){ s=(s*9301+49297)%233280; return s/233280; }
   const diffs=[];
@@ -243,7 +252,9 @@ const classicLevels = Array.from({length:8},(_,i)=>({seed:100+i*173,diffs:genera
 let mode="classic"; // classic | endless | daily
 let levelIndex=0, diffs=[], found=0, solvedSet=new Set();
 let timer=0, timerId=null, freezeLeft=0, penalty=2, score=0;
-const best=load("dq_best_v3",{}); const achievements=load("dq_ach_v3",{streak:false,fast:false,flawless:false,daily:false});
+const best=load("dq_best_v31",{}); const achievements=load("dq_ach_v31",{daily:false,fast:false,share:false,purchased:false});
+const PAY_URL = "https://your-checkout-or-link.com"; // <- replace with your real checkout link
+const PRO_KEY = "DESIGN-VIP"; // redeem code
 
 function setHUD(){
   $("#modeBadge").textContent=mode==="classic"?"Classic":(mode==="endless"?"Endless":"Daily");
@@ -260,6 +271,15 @@ function setHUD(){
 function startTimer(){ if(timerId) clearInterval(timerId); timer=0; timerId=setInterval(()=>{ if(freezeLeft>0){freezeLeft--; return;} timer++; setHUD(); },1000) }
 function stopTimer(){ clearInterval(timerId); timerId=null }
 
+function adaptiveFactor(){
+  const key=`${mode}-${levelIndex}`; const b=best[key];
+  if(!b) return {extra:0, shrink:0};
+  if(b<=30) return {extra:1, shrink:0.1};
+  if(b<=50) return {extra:0, shrink:0.05};
+  return {extra:0, shrink:0};
+}
+function dailySeed(){ const d=new Date(); achievements.daily=true; store("dq_ach_v31",achievements); return d.getUTCFullYear()*10000+(d.getUTCMonth()+1)*100+d.getUTCDate(); }
+
 function buildLevel(){
   solvedSet=new Set(); found=0;
   const seedBase = (mode==="daily") ? dailySeed() : 900 + levelIndex*97 + (mode==="endless"?Math.floor(Math.random()*1000):0);
@@ -270,31 +290,15 @@ function buildLevel(){
   diffs = (mode==="classic"? classicLevels[levelIndex].diffs : generateDiffs(seedBase, diffCount, scale));
 
   drawScene($("#svgLeft"), seed, []);
-  drawScene($("#svgRight"), seed, diffs);
+  drawScene($("#svgRight"), seed, diffs); // same scene but with subtle mods blended in
   renderHotspots();
-  startTimer(); setHUD(); $("#statusLine").textContent="Find all differences. Answers fade out — keep track!";
+  startTimer(); setHUD(); $("#statusLine").textContent="Find all differences. Found spots pulse then vanish.";
+  maybePaywall();
 }
-
-/* Adaptive difficulty based on prior performance */
-function adaptiveFactor(){
-  const key=`${mode}-${levelIndex}`; const b=best[key];
-  if(!b) return {extra:0, shrink:0}; // no data
-  if(b<=30) return {extra:1, shrink:0.1}; // you're fast → more diffs, smaller hitboxes
-  if(b<=50) return {extra:0, shrink:0.05};
-  return {extra:0, shrink:0};
-}
-
-function dailySeed(){
-  const d=new Date(); const y=d.getUTCFullYear(), m=d.getUTCMonth()+1, day=d.getUTCDate();
-  achievements.daily=true; store("dq_ach_v3",achievements);
-  return y*10000+m*100+day;
-}
-
 function nextLevel(){ levelIndex = (mode==="classic")? (levelIndex+1)%classicLevels.length : levelIndex+1; buildLevel(); }
 
 function renderHotspots(){
   const svg=$("#svgRight"); Array.from(svg.querySelectorAll(".hot")).forEach(n=>n.remove());
-
   diffs.forEach((d,i)=>{
     const g=document.createElementNS("http://www.w3.org/2000/svg","g"); g.classList.add("hot"); g.style.cursor="pointer";
     let hit,cx,cy,hitR=d.hitR||12;
@@ -303,27 +307,25 @@ function renderHotspots(){
     else { const mx=(d.x1+d.x2)/2,my=(d.y1+d.y2)/2; hit=document.createElementNS("http://www.w3.org/2000/svg","circle"); hit.setAttribute("cx",mx); hit.setAttribute("cy",my); hit.setAttribute("r",hitR); cx=mx; cy=my; }
     hit.setAttribute("fill","rgba(0,0,0,0)"); hit.setAttribute("stroke","rgba(0,0,0,0)"); g.appendChild(hit);
 
-    // transient marker (fades away so answers aren't shown)
+    // transient pulse marker
     const marker=document.createElementNS("http://www.w3.org/2000/svg","circle");
-    marker.setAttribute("cx",cx); marker.setAttribute("cy",cy); marker.setAttribute("r",16);
+    marker.setAttribute("cx",cx); marker.setAttribute("cy",cy); marker.setAttribute("r",18);
     marker.setAttribute("fill","rgba(21,179,109,.22)"); marker.setAttribute("stroke","#15b36d"); marker.setAttribute("stroke-width","2");
     marker.style.opacity=0; g.appendChild(marker);
 
     g.addEventListener("click", e=>{
       if(solvedSet.has(i)) return;
-      solvedSet.add(i); found++; score += 100; // base points
-      // show marker briefly then fade out to avoid "shown answers"
-      marker.style.transition="opacity .15s ease, transform .2s ease"; marker.style.opacity=1; marker.style.transform="scale(1.05)";
-      setTimeout(()=>{ marker.style.opacity=0; }, 350);
+      solvedSet.add(i); found++; score += 100;
+      marker.style.transition="opacity .12s ease, transform .2s ease"; marker.style.opacity=1; marker.style.transform="scale(1.06)";
+      setTimeout(()=>{ marker.style.opacity=0; }, 280); // fade away fast
       sfx("ok"); toast("Correct!");
       $("#statusLine").innerHTML=`✅ Found ${found}/${diffs.length}`;
       setHUD();
       if(found===diffs.length){
         stopTimer(); confetti(150); sfx("win");
-        // scoring: faster = more points; fewer misclick penalties assumed through timer
         score += Math.max(0, 300 - timer*2);
-        const key=`${mode}-${levelIndex}`; if(!best[key] || timer<best[key]) best[key]=timer; store("dq_best_v3",best);
-        if(timer<=30) achievements.fast=true; if(found===diffs.length) achievements.flawless=true; store("dq_ach_v3",achievements);
+        const key=`${mode}-${levelIndex}`; if(!best[key] || timer<best[key]) best[key]=timer; store("dq_best_v31",best);
+        if(timer<=30) achievements.fast=true; store("dq_ach_v31",achievements);
         $("#statusLine").innerHTML=`🎉 Level complete in <strong>${fmt(Math.floor(timer/60))}:${fmt(timer%60)}</strong>. Score +${Math.max(0, 300 - timer*2)}. Next level →`;
         setHUD();
       }
@@ -332,28 +334,81 @@ function renderHotspots(){
     svg.appendChild(g);
   });
 
-  // Misclick penalty on board (right SVG only)
+  // Misclick penalty
   svg.addEventListener("click", e=>{
     if(!e.target.closest(".hot")){
-      timer += penalty; score -= 20; setHUD();
+      timer += 2; score -= 20; setHUD();
       $("#panel").classList.remove("shake"); void $("#panel").offsetWidth; $("#panel").classList.add("shake");
-      sfx("miss"); toast(`Miss! +${penalty}s`);
+      sfx("miss"); toast(`Miss! +2s`);
     }
   });
 }
 
+/* ====== Viral Hooks: Challenge Links ====== */
+function shareChallenge(){
+  const seed = 100000 + Math.floor(Math.random()*900000);
+  const url = new URL(location.href.split('#')[0]);
+  url.searchParams.set("mode","challenge");
+  url.searchParams.set("seed", String(seed));
+  navigator.clipboard.writeText(url.toString())
+    .then(()=> toast("Challenge link copied!"))
+    .catch(()=> alert(url.toString()));
+  achievements.share = true; store("dq_ach_v31",achievements);
+}
+function parseChallenge(){
+  const p = new URLSearchParams(location.search);
+  if(p.get("mode")==="challenge"){
+    mode="endless"; levelIndex=0;
+    const s = Number(p.get("seed")||"0");
+    if(s>0){ buildChallengeFromSeed(s); return true; }
+  }
+  return false;
+}
+function buildChallengeFromSeed(seed){
+  solvedSet=new Set(); found=0;
+  diffs = generateDiffs(seed, 7, 1);
+  drawScene($("#svgLeft"), seed, []);
+  drawScene($("#svgRight"), seed, diffs);
+  renderHotspots(); startTimer(); setHUD();
+  $("#statusLine").textContent="Community Challenge — same seed for everyone. Share your time!";
+}
+
+/* ====== Paywall & Monetization ====== */
+function maybePaywall(){
+  const pro = load("dq_pro", false);
+  if(pro) return;
+  const shareCount = load("dq_shares", 0);
+  // Trigger paywall if endless past level 10 or classic loops
+  if( (mode==="endless" && levelIndex>=10) || (mode==="classic" && levelIndex>7) ){
+    $("#paywall").style.display="flex";
+  }
+}
+$("#buyBtn").addEventListener("click", ()=>{ window.open(PAY_URL, "_blank"); });
+$("#shareBtn").addEventListener("click", ()=>{
+  const u = location.href.split('#')[0];
+  navigator.clipboard.writeText(u).then(()=>{ toast("Link copied — share with friends!"); });
+  const c = load("dq_shares",0)+1; store("dq_shares",c);
+  if(c>=3){ store("dq_pro",true); $("#paywall").style.display="none"; toast("Pro unlocked by sharing!"); }
+});
+$("#redeemBtn").addEventListener("click", ()=>{
+  const v = $("#redeemCode").value.trim().toUpperCase();
+  if(v===PRO_KEY){ store("dq_pro",true); $("#paywall").style.display="none"; toast("Pro unlocked — enjoy!"); }
+  else{ toast("Invalid code"); }
+});
+
 /* ====== Controls ====== */
-$("#startBtn").addEventListener("click", ()=>{ buildLevel(); });
-$("#nextBtn").addEventListener("click", ()=>{ nextLevel(); });
+$("#startBtn").addEventListener("click", ()=>{ if(!parseChallenge()) buildLevel(); });
+$("#nextBtn").addEventListener("click", ()=>{ levelIndex = (mode==="classic")? (levelIndex+1)%classicLevels.length : levelIndex+1; buildLevel(); });
 $("#endlessBtn").addEventListener("click", ()=>{ mode = (mode==="endless"? "classic" : "endless"); levelIndex=0; buildLevel(); });
 $("#dailyBtn").addEventListener("click", ()=>{ mode="daily"; levelIndex=0; buildLevel(); });
 $("#freezeBtn").addEventListener("click", ()=>{ freezeLeft = Math.max(freezeLeft, 5); toast("Timer frozen for 5s"); });
 $("#zoomBtn").addEventListener("click", ()=> startZoom(4000));
+$("#shareChallengeBtn").addEventListener("click", shareChallenge);
 $("#themeBtn").addEventListener("click", ()=>{ const night=document.body.getAttribute("data-theme")==="night"; document.body.setAttribute("data-theme", night? "" : "night"); buildLevel(); });
 $("#muteBtn").addEventListener("click", ()=>{ muted=!muted; $("#muteBtn").textContent = muted? "🔇 Sound Off":"🔊 Sound On"; if(ac.state==="suspended") ac.resume(); });
 
 // init
-buildLevel();
+if(!parseChallenge()) buildLevel();
 </script>
 </body>
 </html>
